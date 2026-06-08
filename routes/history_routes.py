@@ -10,7 +10,12 @@ from fastapi import APIRouter, Request, HTTPException
 from core.models import ChatMessage
 from core.database import SessionLocal, ChatMessage as DbChatMessage, Session as DbSession
 from src.topic_analyzer import analyze_topics
-from routes.session_routes import _verify_session_owner
+from routes.session_routes import (
+    _message_role,
+    _message_text,
+    _reject_compact_during_active_run,
+    _verify_session_owner,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -517,10 +522,13 @@ def setup_history_routes(session_manager) -> APIRouter:
     async def compact_session(request: Request, session_id: str):
         """Manually trigger context compaction for a session."""
         _verify_session_owner(request, session_id)
+        from src.auth_helpers import effective_user
+        owner = effective_user(request)
         try:
             session = session_manager.get_session(session_id)
         except KeyError:
             raise HTTPException(404, "Session not found")
+        _reject_compact_during_active_run(session_id)
 
         try:
             from src.model_context import estimate_tokens, get_context_length
@@ -543,13 +551,13 @@ def setup_history_routes(session_manager) -> APIRouter:
 
             # Build text to summarize
             convo_text = "\n".join(
-                f"{(m.role if isinstance(m, ChatMessage) else m.get('role', '')).upper()}: "
-                f"{((m.content if isinstance(m, ChatMessage) else m.get('content')) or '')[:2000]}"
+                f"{_message_role(m).upper()}: "
+                f"{_message_text(m)[:2000]}"
                 for m in older
             )
 
             # Use utility model if available
-            util_url, util_model, util_headers = resolve_endpoint("utility")
+            util_url, util_model, util_headers = resolve_endpoint("utility", owner=owner or None)
             compact_url = util_url or session.endpoint_url
             compact_model = util_model or session.model
             compact_headers = util_headers if util_url else session.headers
