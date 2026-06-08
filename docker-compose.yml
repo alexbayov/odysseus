@@ -16,6 +16,7 @@ services:
       # land under /app/.local for the odysseus user. Persist them so a
       # container recreate does not silently remove installed serve engines.
       - ./data/local:/app/.local:z
+      - ./data/builtin_mcp.py:/app/src/builtin_mcp.py:ro
     extra_hosts:
       # Lets the container reach local services on the Docker host, including
       # Ollama at http://host.docker.internal:11434.
@@ -42,6 +43,7 @@ services:
       - EMBEDDING_MODEL=${EMBEDDING_MODEL:-}
       - FASTEMBED_MODEL=${FASTEMBED_MODEL:-sentence-transformers/all-MiniLM-L6-v2}
       - FASTEMBED_CACHE_PATH=${FASTEMBED_CACHE_PATH:-}
+      - npm_config_cache=/app/data/npm-cache
       - CLEANUP_INTERVAL_HOURS=${CLEANUP_INTERVAL_HOURS:-24}
       - ODYSSEUS_INPROCESS_POLLERS=${ODYSSEUS_INPROCESS_POLLERS:-1}
       - ODYSSEUS_INPROCESS_TASKS=${ODYSSEUS_INPROCESS_TASKS:-1}

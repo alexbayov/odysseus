@@ -80,6 +80,12 @@ export VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}"
 # vLLM and helper scripts land here because /app is the non-root user's HOME.
 export PATH="/app/.local/bin:$PATH"
 
+# Ensure npx cache is in a persistent volume (symlinked from docker-compose data dir)
+if [ ! -L /app/.npm ] && [ ! -d /app/.npm ]; then
+    mkdir -p /app/data/npm-cache
+    ln -sf /app/data/npm-cache /app/.npm
+    chown -h "$PUID:$PGID" /app/.npm /app/data/npm-cache
+fi
 # Run first-time setup as the app user so data/ files get the right ownership.
 # setup.py is idempotent — skips auth.json / .env if they already exist.
 # || true so a setup failure never prevents the container from starting.
